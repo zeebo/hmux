@@ -90,7 +90,6 @@ func addArgument(ctx context.Context, a *Arg, val string) context.Context {
 	if args := getArguments(ctx); args != nil {
 		args[a] = val
 		return ctx
-	} else {
-		return context.WithValue(ctx, argumentsKey{}, map[*Arg]string{a: val})
 	}
+	return context.WithValue(ctx, argumentsKey{}, map[*Arg]string{a: val})
 }
