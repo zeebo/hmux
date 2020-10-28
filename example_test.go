@@ -51,6 +51,6 @@ func ExampleArg() {
 	resources.ServeHTTP(nil, httptest.NewRequest("GET", "/foo/bar", nil))
 
 	//output:
-	// arg: /foo
+	// arg: foo
 	// path: /bar
 }

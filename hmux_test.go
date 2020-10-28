@@ -3,7 +3,6 @@ package hmux
 import (
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"testing"
 
 	"github.com/zeebo/assert"
@@ -19,6 +18,7 @@ func TestShift(t *testing.T) {
 		{"/foo", "/foo", ""},
 		{"/", "/", ""},
 		{"//", "/", "/"},
+		{"//bar", "/", "/bar"},
 		{"", "", ""},
 	}
 
@@ -33,7 +33,7 @@ func TestDir(t *testing.T) {
 	ok := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {})
 	matches := func(path string, dir Dir) bool {
 		rec := httptest.NewRecorder()
-		dir.ServeHTTP(rec, &http.Request{URL: &url.URL{Path: path}})
+		dir.ServeHTTP(rec, httptest.NewRequest("GET", path, nil))
 		return rec.Code == http.StatusOK
 	}
 
@@ -50,6 +50,7 @@ func TestDir(t *testing.T) {
 	assert.That(t, matches("/foo/bar", Dir{"/foo": Dir{"*": ok}}))
 	assert.That(t, matches("/foo/baz", Dir{"/foo": Dir{"*": ok}}))
 	assert.That(t, matches("/foo", Dir{"/foo": Dir{"*": ok}}))
+	assert.That(t, !matches("/foobar", Dir{"/foo": Dir{"*": ok}}))
 
 	// * does not consume a component
 	assert.That(t, matches("/foo/baz", Dir{"/foo": Dir{"*": Dir{"/baz": ok}}}))
@@ -57,13 +58,16 @@ func TestDir(t *testing.T) {
 
 	// empty components can be matched
 	assert.That(t, matches("/foo//baz", Dir{"/foo": Dir{"/": Dir{"/baz": ok}}}))
+
+	// empty key only matches empty url
+	assert.That(t, !matches("/", Dir{"": ok}))
 }
 
 func TestMethod(t *testing.T) {
 	ok := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {})
 	matches := func(method string, m Method) bool {
 		rec := httptest.NewRecorder()
-		m.ServeHTTP(rec, &http.Request{Method: method})
+		m.ServeHTTP(rec, httptest.NewRequest(method, "/", nil))
 		return rec.Code == http.StatusOK
 	}
 
@@ -78,25 +82,25 @@ func TestArg(t *testing.T) {
 
 	// check that argument shifts and captures the path component
 	arg.Capture(http.HandlerFunc(func(_ http.ResponseWriter, req *http.Request) {
-		assert.That(t, arg.Exists(req.Context()))
-		assert.Equal(t, "/foo", arg.Value(req.Context()))
-
+		assert.Equal(t, "foo", arg.Value(req.Context()))
 		assert.Equal(t, "/bar", req.URL.Path)
 	})).ServeHTTP(nil, httptest.NewRequest("", "/foo/bar", nil))
 
+	// check that empty argument works
+	Dir{"/foo": arg.Capture(http.HandlerFunc(func(_ http.ResponseWriter, req *http.Request) {
+		assert.Equal(t, "", arg.Value(req.Context()))
+		assert.Equal(t, "/bar", req.URL.Path)
+	}))}.ServeHTTP(nil, httptest.NewRequest("", "/foo//bar", nil))
+
 	// check that no argument is a 404
 	rec := httptest.NewRecorder()
-	arg.Capture(nil).ServeHTTP(rec, httptest.NewRequest("", "/", nil))
+	Dir{"/foo": arg.Capture(nil)}.ServeHTTP(rec, httptest.NewRequest("", "/foo", nil))
 	assert.Equal(t, http.StatusNotFound, rec.Code)
 
 	// check double arguments don't get confused
 	arg.Capture(arg2.Capture(http.HandlerFunc(func(_ http.ResponseWriter, req *http.Request) {
-		assert.That(t, arg.Exists(req.Context()))
-		assert.Equal(t, "/foo", arg.Value(req.Context()))
-
-		assert.That(t, arg2.Exists(req.Context()))
-		assert.Equal(t, "/bar", arg2.Value(req.Context()))
-
+		assert.Equal(t, "foo", arg.Value(req.Context()))
+		assert.Equal(t, "bar", arg2.Value(req.Context()))
 		assert.Equal(t, "", req.URL.Path)
 	}))).ServeHTTP(nil, httptest.NewRequest("", "/foo/bar", nil))
 }

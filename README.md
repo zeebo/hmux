@@ -19,7 +19,8 @@ type Arg struct {
 }
 ```
 
-Arg captures path components and attaches them to the request context
+Arg captures path components and attaches them to the request context. It always
+captures a non-empty component.
 
 #### func (*Arg) Capture
 
@@ -29,20 +30,12 @@ func (a *Arg) Capture(h http.Handler) http.Handler
 Capture consumes a path component and stores it in the request context so that
 it can be retreived with Value.
 
-#### func (*Arg) Exists
-
-```go
-func (a *Arg) Exists(ctx context.Context) bool
-```
-Exists returns true if the Arg has a value on the context.
-
 #### func (*Arg) Value
 
 ```go
 func (a *Arg) Value(ctx context.Context) string
 ```
-Value returns the value associated with the Arg on the context. It returns the
-zero value if it is not set.
+Value returns the value associated with the Arg on the context.
 
 #### type Dir
 
