@@ -77,30 +77,36 @@ func TestMethod(t *testing.T) {
 }
 
 func TestArg(t *testing.T) {
-	arg := new(Arg)
-	arg2 := new(Arg)
+	arg1 := Arg("1")
+	arg2 := Arg("2")
 
 	// check that argument shifts and captures the path component
-	arg.Capture(http.HandlerFunc(func(_ http.ResponseWriter, req *http.Request) {
-		assert.Equal(t, "foo", arg.Value(req.Context()))
+	arg1.Capture(http.HandlerFunc(func(_ http.ResponseWriter, req *http.Request) {
+		assert.Equal(t, "foo", arg1.Value(req.Context()))
 		assert.Equal(t, "/bar", req.URL.Path)
 	})).ServeHTTP(nil, httptest.NewRequest("", "/foo/bar", nil))
 
 	// check that empty argument works
-	Dir{"/foo": arg.Capture(http.HandlerFunc(func(_ http.ResponseWriter, req *http.Request) {
-		assert.Equal(t, "", arg.Value(req.Context()))
+	Dir{"/foo": arg1.Capture(http.HandlerFunc(func(_ http.ResponseWriter, req *http.Request) {
+		assert.Equal(t, "", arg1.Value(req.Context()))
 		assert.Equal(t, "/bar", req.URL.Path)
 	}))}.ServeHTTP(nil, httptest.NewRequest("", "/foo//bar", nil))
 
 	// check that no argument is a 404
 	rec := httptest.NewRecorder()
-	Dir{"/foo": arg.Capture(nil)}.ServeHTTP(rec, httptest.NewRequest("", "/foo", nil))
+	Dir{"/foo": arg1.Capture(nil)}.ServeHTTP(rec, httptest.NewRequest("", "/foo", nil))
 	assert.Equal(t, http.StatusNotFound, rec.Code)
 
 	// check double arguments don't get confused
-	arg.Capture(arg2.Capture(http.HandlerFunc(func(_ http.ResponseWriter, req *http.Request) {
-		assert.Equal(t, "foo", arg.Value(req.Context()))
+	arg1.Capture(arg2.Capture(http.HandlerFunc(func(_ http.ResponseWriter, req *http.Request) {
+		assert.Equal(t, "foo", arg1.Value(req.Context()))
 		assert.Equal(t, "bar", arg2.Value(req.Context()))
 		assert.Equal(t, "", req.URL.Path)
 	}))).ServeHTTP(nil, httptest.NewRequest("", "/foo/bar", nil))
+
+	// check that argument capture is value oriented
+	arg1.Capture(http.HandlerFunc(func(_ http.ResponseWriter, req *http.Request) {
+		assert.Equal(t, "foo", Arg("1").Value(req.Context()))
+		assert.Equal(t, "/bar", req.URL.Path)
+	})).ServeHTTP(nil, httptest.NewRequest("", "/foo/bar", nil))
 }

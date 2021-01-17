@@ -54,16 +54,14 @@ func (d Dir) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 // Arg captures path components and attaches them to the request context.
 // It always captures a non-empty component.
-type Arg struct {
-	byte // non-zero sized so that pointers are distinct
-}
+type Arg string
 
 // Value returns the value associated with the Arg on the context.
-func (a *Arg) Value(ctx context.Context) string { return getArguments(ctx)[a] }
+func (a Arg) Value(ctx context.Context) string { return getArguments(ctx)[a] }
 
 // Capture consumes a path component and stores it in the request context so that it
-// can be retreived with Value.
-func (a *Arg) Capture(h http.Handler) http.Handler {
+// can be retrieved with Value.
+func (a Arg) Capture(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		if dir, rem := shift(req.URL.Path); dir != "" {
 			req.URL.Path = rem
@@ -75,20 +73,20 @@ func (a *Arg) Capture(h http.Handler) http.Handler {
 }
 
 //
-// we store a map[*Arg]string and reuse it on the context to avoid O(N) lookup behavior
+// we store a map[Arg]string and reuse it on the context to avoid O(N) lookup behavior
 //
 
 type argumentsKey struct{}
 
-func getArguments(ctx context.Context) map[*Arg]string {
-	args, _ := ctx.Value(argumentsKey{}).(map[*Arg]string)
+func getArguments(ctx context.Context) map[Arg]string {
+	args, _ := ctx.Value(argumentsKey{}).(map[Arg]string)
 	return args
 }
 
-func addArgument(ctx context.Context, a *Arg, val string) context.Context {
+func addArgument(ctx context.Context, a Arg, val string) context.Context {
 	if args := getArguments(ctx); args != nil {
 		args[a] = val
 		return ctx
 	}
-	return context.WithValue(ctx, argumentsKey{}, map[*Arg]string{a: val})
+	return context.WithValue(ctx, argumentsKey{}, map[Arg]string{a: val})
 }

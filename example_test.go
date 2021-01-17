@@ -39,11 +39,9 @@ func ExampleDir() {
 }
 
 func ExampleArg() {
-	arg := new(hmux.Arg)
-
-	resources := arg.Capture(
+	resources := hmux.Arg("name").Capture(
 		http.HandlerFunc(func(_ http.ResponseWriter, req *http.Request) {
-			fmt.Println("arg:", arg.Value(req.Context()))
+			fmt.Println("arg:", hmux.Arg("name").Value(req.Context()))
 			fmt.Println("path:", req.URL.Path)
 		}),
 	)
