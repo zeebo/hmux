@@ -37,6 +37,7 @@ func trim(path string) string {
 
 // Dir pulls off path components from the front of the path and dispatches.
 // It attempts to dispatch to "*" without consuming a path component if nothing matches.
+// To ensure a path ends, use a key of "". To ensure it ends with a slash, use "/".
 type Dir map[string]http.Handler
 
 // ServeHTTP implements the http.Handler interface.
